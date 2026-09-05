@@ -1199,6 +1199,24 @@ hr {
   bottom: 50px;
   z-index: 4;
 }
+.media-waiting {
+  position: absolute;
+  z-index: 3;
+  padding: 8px 12px;
+  border-radius: 6px;
+  color: #dbdee1;
+  background: #111c;
+  font-size: 13px;
+}
+.screen-share-tip {
+  margin: 16px auto 0;
+  padding: 8px 12px;
+  border-radius: 6px;
+  color: #b5bac1;
+  background: #2b2d31;
+  font-size: 12px;
+  text-align: center;
+}
 .voice-hint {
   text-align: center;
   font-size: 15px;

@@ -55,34 +55,72 @@ export function Media({
   muted?: boolean;
   video?: boolean;
 }) {
-  const ref = useRef<HTMLVideoElement>(null),
-    [blocked, setBlocked] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null),
+    audioRef = useRef<HTMLAudioElement>(null),
+    [blocked, setBlocked] = useState(false),
+    [waiting, setWaiting] = useState(video);
   useEffect(() => {
-    const element = ref.current;
-    if (element && stream) {
-      element.srcObject = stream;
-      element.play().catch(() => setBlocked(true));
+    const videoElement = videoRef.current,
+      audioElement = audioRef.current;
+    setBlocked(false);
+    setWaiting(video && !!stream);
+    if (stream) {
+      if (videoElement) {
+        videoElement.srcObject = stream;
+        videoElement.play().catch(() => {});
+      }
+      if (audioElement) {
+        audioElement.srcObject = stream;
+        audioElement.play().catch(() => setBlocked(true));
+      }
     }
-    return () => {
-      if (element) element.srcObject = null;
+    const retry = () => {
+      videoElement?.play().catch(() => {});
+      audioElement?.play().catch(() => setBlocked(true));
     };
-  }, [stream]);
+    stream?.addEventListener('addtrack', retry);
+    stream
+      ?.getTracks()
+      .forEach((track) => track.addEventListener('unmute', retry));
+    return () => {
+      stream?.removeEventListener('addtrack', retry);
+      stream
+        ?.getTracks()
+        .forEach((track) => track.removeEventListener('unmute', retry));
+      if (videoElement) videoElement.srcObject = null;
+      if (audioElement) audioElement.srcObject = null;
+    };
+  }, [stream, video]);
   return (
     <>
-      {/* Live peer media has no prerecorded caption track. */}
+      {video && (
+        <>
+          {/* Live peer media has no prerecorded caption track. */}
+          {/* oxlint-disable-next-line jsx-a11y/media-has-caption */}
+          <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            muted
+            className="media-video"
+            onPlaying={() => setWaiting(false)}
+            onWaiting={() => setWaiting(true)}
+          />
+        </>
+      )}
+      {/* Live peer audio has no prerecorded caption track. */}
       {/* oxlint-disable-next-line jsx-a11y/media-has-caption */}
-      <video
-        ref={ref}
-        autoPlay
-        playsInline
-        muted={muted}
-        className={video ? 'media-video' : 'media-audio'}
-      />
+      <audio ref={audioRef} autoPlay muted={muted} className="media-audio" />
+      {waiting && (
+        <output className="media-waiting">
+          Aguardando imagem…
+        </output>
+      )}
       {blocked && (
         <button
           className="primary media-unlock"
           onClick={() => {
-            ref.current
+            audioRef.current
               ?.play()
               .then(() => setBlocked(false))
               .catch(() => {});

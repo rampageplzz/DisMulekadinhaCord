@@ -982,7 +982,9 @@ export default function Home() {
                     {voice.mode === 'screen' && (
                       <span className="live-label">AO VIVO</span>
                     )}
-                    {voice.visual && <FullscreenButton />}
+                    {voice.visual && voice.mode !== 'screen' && (
+                      <FullscreenButton />
+                    )}
                     {voice.mode === 'screen' && voice.streamInfo && (
                       <span className="stream-spec">
                         {voice.streamInfo.width}×{voice.streamInfo.height} ·{' '}
@@ -1019,6 +1021,12 @@ export default function Home() {
                     </div>
                   ))}
                 </div>
+                {voice.mode === 'screen' && (
+                  <p className="screen-share-tip">
+                    Para evitar o efeito espelho, compartilhe outra janela ou
+                    aba. Quem assiste pode abrir a transmissão em tela cheia.
+                  </p>
+                )}
                 {voice.peers.length === 0 && (
                   <p className="voice-hint">
                     {voice.joining

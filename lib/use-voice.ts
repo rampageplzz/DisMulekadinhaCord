@@ -53,7 +53,7 @@ const tuneVideoSender = async (
 ) => {
   const parameters = sender.getParameters();
   if (!parameters.encodings.length) return;
-  parameters.degradationPreference = 'maintain-resolution';
+  parameters.degradationPreference = 'balanced';
   parameters.encodings[0].maxBitrate = bitrate;
   parameters.encodings[0].maxFramerate = frameRate;
   parameters.encodings[0].scaleResolutionDownBy = 1;
@@ -285,6 +285,18 @@ export function useVoice(onError: (text: string) => void) {
                     : x,
                 ),
               );
+            if (
+              payload.refreshVideo &&
+              s.id < p.id &&
+              c.pc.signalingState === 'stable'
+            ) {
+              await c.pc.setLocalDescription(await c.pc.createOffer());
+              await signal(p.id, {
+                description: c.pc.localDescription,
+                video: !!s.visual,
+                ...s.streamInfo,
+              });
+            }
             if (payload.description) {
               await c.pc.setRemoteDescription(payload.description);
               for (const candidate of c.candidates)
@@ -433,8 +445,20 @@ export function useVoice(onError: (text: string) => void) {
           await api('voice/signal', {
             peer: s.id,
             target,
-            payload: { video: true, ...info },
+            payload: { video: true, refreshVideo: true, ...info },
           });
+          if (s.id < target && c.pc.signalingState === 'stable') {
+            await c.pc.setLocalDescription(await c.pc.createOffer());
+            await api('voice/signal', {
+              peer: s.id,
+              target,
+              payload: {
+                description: c.pc.localDescription,
+                video: true,
+                ...info,
+              },
+            });
+          }
         }),
       );
       stream.getVideoTracks()[0].onended = () => {
