@@ -662,8 +662,8 @@ export default function Home() {
                   <>
                     <div className="server-banner">
                       <Gamepad2 size={35} />
-                      <strong>A resenha começa aqui.</strong>
-                      <small>Seu lugar. Sua galera.</small>
+                      <strong>Boas-vindas à Mulekadinha!</strong>
+                      <small>Aqui a gente assiste à tela do Jarbas.</small>
                     </div>
                     <button
                       className="invite"
@@ -1143,11 +1143,15 @@ export default function Home() {
                     <h1>
                       {server?.kind === 'dm'
                         ? 'Conversa com ' + server.name
-                        : 'Boas-vindas a #' + channel?.name + '!'}
+                        : channel?.name === 'boas-vindas'
+                          ? 'Boas-vindas à Mulekadinha!'
+                          : 'Boas-vindas a #' + channel?.name + '!'}
                     </h1>
                     <p>
                       {server?.kind === 'dm' ? (
                         'Este é o começo da conversa de vocês.'
+                      ) : channel?.name === 'boas-vindas' ? (
+                        'Aqui a gente assiste à tela do Jarbas.'
                       ) : (
                         <>
                           Este é o começo do canal{' '}
