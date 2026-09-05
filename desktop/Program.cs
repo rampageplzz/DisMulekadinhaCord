@@ -11,8 +11,8 @@ using Microsoft.Web.WebView2.WinForms;
 [assembly: AssemblyTitle("DisMulekadinhaCord")]
 [assembly: AssemblyProduct("DisMulekadinhaCord")]
 [assembly: AssemblyCompany("DisMulekadinhaCord")]
-[assembly: AssemblyVersion("1.0.0.0")]
-[assembly: AssemblyFileVersion("1.0.0.0")]
+[assembly: AssemblyVersion("1.1.0.0")]
+[assembly: AssemblyFileVersion("1.1.0.0")]
 
 internal static class Program {
     internal const string SiteUrl = "https://dismulekadinhacord.rampageplz.chatgpt.site";
@@ -35,6 +35,10 @@ internal sealed class MainWindow : Form {
     private readonly Button retry = new Button();
     private CoreWebView2Environment environment;
     private bool initializing;
+    private bool fullScreen;
+    private FormBorderStyle previousBorderStyle;
+    private FormWindowState previousWindowState;
+    private Rectangle previousBounds;
     private readonly Uri origin = new Uri(Program.SiteUrl);
     [DllImport("dwmapi.dll")] private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int value, int size);
 
@@ -67,6 +71,7 @@ internal sealed class MainWindow : Form {
         KeyDown += (sender,e) => {
             if(e.KeyCode==Keys.F5 && web.CoreWebView2!=null) { web.Reload(); e.Handled=true; }
             if(e.Alt && e.KeyCode==Keys.Left && web.CanGoBack) {web.GoBack();e.Handled=true;}
+            if(e.KeyCode==Keys.Escape && fullScreen && web.CoreWebView2!=null) {web.CoreWebView2.ExecuteScriptAsync("document.exitFullscreen()");e.Handled=true;}
         };
     }
     protected override void OnHandleCreated(EventArgs e) {
@@ -79,6 +84,22 @@ internal sealed class MainWindow : Form {
     }
     private void ShowStatus(string text,bool allowRetry) {
         message.Text=text; retry.Visible=allowRetry;status.Visible=true;status.BringToFront();
+    }
+    private void SetFullScreen(bool enabled) {
+        if(enabled==fullScreen) return;
+        if(enabled) {
+            previousBorderStyle=FormBorderStyle;
+            previousWindowState=WindowState;
+            previousBounds=Bounds;
+            FormBorderStyle=FormBorderStyle.None;
+            WindowState=FormWindowState.Maximized;
+        } else {
+            WindowState=FormWindowState.Normal;
+            FormBorderStyle=previousBorderStyle;
+            Bounds=previousBounds;
+            WindowState=previousWindowState;
+        }
+        fullScreen=enabled;
     }
     private async System.Threading.Tasks.Task Initialize() {
         if(initializing) return; initializing=true;
@@ -114,6 +135,7 @@ internal sealed class MainWindow : Form {
             };
             // The runtime's own capture picker remains in control of what is shared.
             web.CoreWebView2.ScreenCaptureStarting += (sender,e) => {if(!SameOrigin(web.Source.ToString()))e.Cancel=true;};
+            web.CoreWebView2.ContainsFullScreenElementChanged += (sender,e) => BeginInvoke(new Action(() => SetFullScreen(web.CoreWebView2.ContainsFullScreenElement)));
             web.CoreWebView2.NewWindowRequested += async (sender,e) => {
                 if(!SameOrigin(e.Uri)) {e.Handled=true;OpenExternal(e.Uri);return;}
                 var deferral=e.GetDeferral();

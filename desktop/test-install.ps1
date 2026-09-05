@@ -5,7 +5,7 @@ if (-not $installTarget.StartsWith($projectRoot+[IO.Path]::DirectorySeparatorCha
 $registryPath='HKCU:/Software/Microsoft/Windows/CurrentVersion/Uninstall/DisMulekadinhaCord'
 $shortcut=Join-Path ([Environment]::GetFolderPath('Desktop')) 'DisMulekadinhaCord.lnk'
 if ((Test-Path $registryPath) -or (Test-Path $shortcut)) {throw 'An existing installation or shortcut was found. Skipping isolated install test.'}
-$installer=Join-Path $PSScriptRoot 'out/DisMulekadinhaCord-Setup-1.0.0.exe'
+$installer=Join-Path $PSScriptRoot 'out/DisMulekadinhaCord-Setup-1.1.0.exe'
 $process=Start-Process -FilePath $installer -ArgumentList '/S',"/D=$installTarget" -WindowStyle Hidden -PassThru -Wait
 if($process.ExitCode -ne 0){throw 'Installer failed'}
 foreach($file in @('DisMulekadinhaCord.exe','Microsoft.Web.WebView2.Core.dll','Microsoft.Web.WebView2.WinForms.dll','WebView2Loader.dll','Uninstall.exe')){

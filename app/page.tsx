@@ -53,13 +53,18 @@ import {
   type Message,
   type Reaction,
 } from '@/lib/client';
-import { useVoice } from '@/lib/use-voice';
+import {
+  STREAM_QUALITY_OPTIONS,
+  useVoice,
+  type StreamQuality,
+} from '@/lib/use-voice';
 import {
   Avatar,
   IconButton,
   Media,
   Modal,
   FormError,
+  FullscreenButton,
 } from '@/components/discord';
 const guestChannels: Channel[] = [
   ['welcome', 'boas-vindas', 'info'],
@@ -92,7 +97,15 @@ export default function Home() {
     [channels, setChannels] = useState<Channel[]>(guestChannels),
     [cid, setCid] = useState('general'),
     [members, setMembers] = useState<User[]>([]),
-    [roomMembers, setRoomMembers] = useState<{id:string;user_id:string;channel_id:string;name:string;color:string}[]>([]),
+    [roomMembers, setRoomMembers] = useState<
+      {
+        id: string;
+        user_id: string;
+        channel_id: string;
+        name: string;
+        color: string;
+      }[]
+    >([]),
     [messages, setMessages] = useState<Message[]>([]),
     [reactions, setReactions] = useState<Reaction[]>([]),
     [hasMore, setHasMore] = useState(false);
@@ -122,7 +135,8 @@ export default function Home() {
     [channelKind, setChannelKind] = useState('text'),
     [copied, setCopied] = useState(false),
     [pendingInvite, setPendingInvite] = useState(''),
-    [deleting, setDeleting] = useState<Message | null>(null);
+    [deleting, setDeleting] = useState<Message | null>(null),
+    [screenQuality, setScreenQuality] = useState<StreamQuality>('1080p60');
   const composer = useRef<HTMLTextAreaElement>(null),
     scroll = useRef<HTMLDivElement>(null),
     upload = useRef<HTMLInputElement>(null),
@@ -363,7 +377,12 @@ export default function Home() {
     event.preventDefault();
     setBusy(true);
     setModalError('');
-    const b = Object.fromEntries(Array.from(new FormData(event.currentTarget), ([key,value]) => [key,typeof value === 'string' ? value : value.name]));
+    const b = Object.fromEntries(
+      Array.from(new FormData(event.currentTarget), ([key, value]) => [
+        key,
+        typeof value === 'string' ? value : value.name,
+      ]),
+    );
     try {
       if (modal === 'auth') {
         await api('auth', { ...b, action: register ? 'register' : 'login' });
@@ -479,7 +498,11 @@ export default function Home() {
         '/api/upload?channel=' + encodeURIComponent(selected),
         { method: 'POST', body: form },
       );
-      const data = await res.json() as {id:string;name:string;error?:string};
+      const data = (await res.json()) as {
+        id: string;
+        name: string;
+        error?: string;
+      };
       if (!res.ok) throw new Error(data.error);
       if (cidRef.current === selected) setAttachment(data);
     } catch (e) {
@@ -742,7 +765,9 @@ export default function Home() {
                 </button>
                 <button
                   className={voice.mode === 'screen' ? 'is-active' : ''}
-                  onClick={() => void voice.startVisual('screen')}
+                  onClick={() =>
+                    void voice.startVisual('screen', screenQuality)
+                  }
                 >
                   <MonitorUp size={17} /> Tela
                 </button>
@@ -957,6 +982,13 @@ export default function Home() {
                     {voice.mode === 'screen' && (
                       <span className="live-label">AO VIVO</span>
                     )}
+                    {voice.visual && <FullscreenButton />}
+                    {voice.mode === 'screen' && voice.streamInfo && (
+                      <span className="stream-spec">
+                        {voice.streamInfo.width}×{voice.streamInfo.height} ·{' '}
+                        {voice.streamInfo.frameRate} FPS
+                      </span>
+                    )}
                   </div>
                   {voice.peers.map((p) => (
                     <div
@@ -977,6 +1009,13 @@ export default function Home() {
                             ? 'Falha na conexão'
                             : 'Conectando…'}
                       </span>
+                      {p.video && <FullscreenButton />}
+                      {p.video && p.width && p.height && (
+                        <span className="stream-spec">
+                          {p.width}×{p.height}
+                          {p.frameRate ? ` · ${p.frameRate} FPS` : ''}
+                        </span>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -1006,19 +1045,40 @@ export default function Home() {
                   >
                     {voice.mode === 'camera' ? <Video /> : <VideoOff />}
                   </IconButton>
-                  <button
-                    className={
-                      'share-screen ' +
-                      (voice.mode === 'screen' ? 'sharing' : '')
-                    }
-                    disabled={!voice.room}
-                    onClick={() => void voice.startVisual('screen')}
-                  >
-                    <MonitorUp size={22} />
-                    {voice.mode === 'screen'
-                      ? 'Parar transmissão'
-                      : 'Compartilhar tela'}
-                  </button>
+                  <div className="stream-controls">
+                    <label>
+                      <span>Qualidade da transmissão</span>
+                      <select
+                        aria-label="Qualidade da transmissão"
+                        value={screenQuality}
+                        disabled={voice.mode === 'screen'}
+                        onChange={(event) =>
+                          setScreenQuality(event.target.value as StreamQuality)
+                        }
+                      >
+                        {STREAM_QUALITY_OPTIONS.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <button
+                      className={
+                        'share-screen ' +
+                        (voice.mode === 'screen' ? 'sharing' : '')
+                      }
+                      disabled={!voice.room}
+                      onClick={() =>
+                        void voice.startVisual('screen', screenQuality)
+                      }
+                    >
+                      <MonitorUp size={22} />
+                      {voice.mode === 'screen'
+                        ? 'Parar transmissão'
+                        : 'Compartilhar tela'}
+                    </button>
+                  </div>
                   <IconButton
                     label="Sair da chamada"
                     className="hangup"
@@ -1031,7 +1091,8 @@ export default function Home() {
                   </IconButton>
                 </div>
                 <p className="voice-footnote">
-                  Até 8 pessoas • Áudio e vídeo entre os participantes
+                  Até 8 pessoas • Tela em até 1440p e 60 FPS • A qualidade final
+                  depende da fonte e da conexão
                 </p>
               </section>
             ) : (

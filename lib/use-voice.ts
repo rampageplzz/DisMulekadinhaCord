@@ -9,6 +9,55 @@ export type VoicePeer = {
   stream?: MediaStream;
   video?: boolean;
   state?: string;
+  quality?: StreamQuality;
+  width?: number;
+  height?: number;
+  frameRate?: number;
+};
+export type StreamQuality = '1080p60' | '1440p60';
+export type StreamInfo = {
+  quality: StreamQuality;
+  width: number;
+  height: number;
+  frameRate: number;
+};
+export const STREAM_QUALITY_OPTIONS: {
+  value: StreamQuality;
+  label: string;
+  width: number;
+  height: number;
+  frameRate: number;
+  bitrate: number;
+}[] = [
+  {
+    value: '1080p60',
+    label: '1080p · 60 FPS',
+    width: 1920,
+    height: 1080,
+    frameRate: 60,
+    bitrate: 10_000_000,
+  },
+  {
+    value: '1440p60',
+    label: '1440p · 60 FPS',
+    width: 2560,
+    height: 1440,
+    frameRate: 60,
+    bitrate: 16_000_000,
+  },
+];
+const tuneVideoSender = async (
+  sender: RTCRtpSender,
+  bitrate: number,
+  frameRate: number,
+) => {
+  const parameters = sender.getParameters();
+  if (!parameters.encodings.length) return;
+  parameters.degradationPreference = 'maintain-resolution';
+  parameters.encodings[0].maxBitrate = bitrate;
+  parameters.encodings[0].maxFramerate = frameRate;
+  parameters.encodings[0].scaleResolutionDownBy = 1;
+  await sender.setParameters(parameters).catch(() => {});
 };
 type Connection = {
   pc: RTCPeerConnection;
@@ -23,6 +72,7 @@ export function useVoice(onError: (text: string) => void) {
     [deaf, setDeaf] = useState(false),
     [visual, setVisual] = useState<MediaStream | null>(null),
     [mode, setMode] = useState<'screen' | 'camera' | null>(null),
+    [streamInfo, setStreamInfo] = useState<StreamInfo | null>(null),
     [joining, setJoining] = useState(false);
   const current = useRef<{
     id: string;
@@ -30,6 +80,9 @@ export function useVoice(onError: (text: string) => void) {
     mic: MediaStream;
     visual: MediaStream | null;
     mode: string | null;
+    streamInfo: StreamInfo | null;
+    videoBitrate: number;
+    videoFrameRate: number;
     connections: Map<string, Connection>;
     ice: RTCIceServer[];
     stopped: boolean;
@@ -61,6 +114,7 @@ export function useVoice(onError: (text: string) => void) {
     setPeers([]);
     setVisual(null);
     setMode(null);
+    setStreamInfo(null);
     setMuted(false);
     setDeaf(false);
   }, []);
@@ -107,6 +161,9 @@ export function useVoice(onError: (text: string) => void) {
         mic,
         visual: null as MediaStream | null,
         mode: null as string | null,
+        streamInfo: null as StreamInfo | null,
+        videoBitrate: 2_500_000,
+        videoFrameRate: 30,
         connections: new Map<string, Connection>(),
         ice: res.iceServers as RTCIceServer[],
         stopped: false,
@@ -137,7 +194,11 @@ export function useVoice(onError: (text: string) => void) {
         };
         s.connections.set(p.id, c);
         if (s.visual) {
-          void senders[1].replaceTrack(s.visual.getVideoTracks()[0] || null);
+          void senders[1]
+            .replaceTrack(s.visual.getVideoTracks()[0] || null)
+            .then(() =>
+              tuneVideoSender(senders[1], s.videoBitrate, s.videoFrameRate),
+            );
           void senders[2].replaceTrack(s.visual.getAudioTracks()[0] || null);
         }
         pc.onicecandidate = (e) => {
@@ -196,6 +257,7 @@ export function useVoice(onError: (text: string) => void) {
                 await signal(p.id, {
                   description: c.pc.localDescription,
                   video: !!s.visual,
+                  ...s.streamInfo,
                 });
               }
             }
@@ -209,7 +271,18 @@ export function useVoice(onError: (text: string) => void) {
             if (payload.video !== undefined)
               setPeers((old) =>
                 old.map((x) =>
-                  x.id === p.id ? { ...x, video: payload.video } : x,
+                  x.id === p.id
+                    ? {
+                        ...x,
+                        video: payload.video,
+                        quality: payload.video ? payload.quality : undefined,
+                        width: payload.video ? payload.width : undefined,
+                        height: payload.video ? payload.height : undefined,
+                        frameRate: payload.video
+                          ? payload.frameRate
+                          : undefined,
+                      }
+                    : x,
                 ),
               );
             if (payload.description) {
@@ -222,6 +295,7 @@ export function useVoice(onError: (text: string) => void) {
                 await signal(p.id, {
                   description: c.pc.localDescription,
                   video: !!s.visual,
+                  ...s.streamInfo,
                 });
               }
             } else if (payload.candidate) {
@@ -273,6 +347,7 @@ export function useVoice(onError: (text: string) => void) {
     const previous = s.visual;
     s.visual = null;
     s.mode = null;
+    s.streamInfo = null;
     previous?.getTracks().forEach((t) => t.stop());
     await Promise.all(
       [...s.connections].map(async ([target, c]) => {
@@ -287,8 +362,12 @@ export function useVoice(onError: (text: string) => void) {
     );
     setVisual(null);
     setMode(null);
+    setStreamInfo(null);
   };
-  const startVisual = async (kind: 'screen' | 'camera') => {
+  const startVisual = async (
+    kind: 'screen' | 'camera',
+    quality: StreamQuality = '1080p60',
+  ) => {
     const s = current.current;
     if (!s) return;
     if (s.mode === kind) {
@@ -297,13 +376,16 @@ export function useVoice(onError: (text: string) => void) {
     }
     let stream: MediaStream | undefined;
     try {
+      const profile =
+        STREAM_QUALITY_OPTIONS.find((option) => option.value === quality) ||
+        STREAM_QUALITY_OPTIONS[0];
       stream =
         kind === 'screen'
           ? await navigator.mediaDevices.getDisplayMedia({
               video: {
-                width: { ideal: 1920 },
-                height: { ideal: 1080 },
-                frameRate: { ideal: 30, max: 30 },
+                width: { ideal: profile.width },
+                height: { ideal: profile.height },
+                frameRate: { ideal: profile.frameRate, max: profile.frameRate },
               },
               audio: true,
             })
@@ -315,17 +397,43 @@ export function useVoice(onError: (text: string) => void) {
         stream.getTracks().forEach((t) => t.stop());
         return;
       }
+      const videoTrack = stream.getVideoTracks()[0];
+      if (!videoTrack) throw new Error('A fonte escolhida não tem vídeo.');
+      videoTrack.contentHint = kind === 'screen' ? 'detail' : 'motion';
+      if (kind === 'screen') {
+        await videoTrack
+          .applyConstraints({
+            width: { ideal: profile.width },
+            height: { ideal: profile.height },
+            frameRate: { ideal: profile.frameRate, max: profile.frameRate },
+          })
+          .catch(() => {});
+      }
       await stopVisual();
+      const settings = videoTrack.getSettings();
+      const info: StreamInfo | null =
+        kind === 'screen'
+          ? {
+              quality,
+              width: settings.width || profile.width,
+              height: settings.height || profile.height,
+              frameRate: Math.round(settings.frameRate || profile.frameRate),
+            }
+          : null;
       s.visual = stream;
       s.mode = kind;
+      s.streamInfo = info;
+      s.videoBitrate = kind === 'screen' ? profile.bitrate : 2_500_000;
+      s.videoFrameRate = kind === 'screen' ? profile.frameRate : 30;
       await Promise.all(
         [...s.connections].map(async ([target, c]) => {
-          await c.senders[1].replaceTrack(stream!.getVideoTracks()[0]);
+          await c.senders[1].replaceTrack(videoTrack);
+          await tuneVideoSender(c.senders[1], s.videoBitrate, s.videoFrameRate);
           await c.senders[2].replaceTrack(stream!.getAudioTracks()[0] || null);
           await api('voice/signal', {
             peer: s.id,
             target,
-            payload: { video: true },
+            payload: { video: true, ...info },
           });
         }),
       );
@@ -334,6 +442,7 @@ export function useVoice(onError: (text: string) => void) {
       };
       setVisual(stream);
       setMode(kind);
+      setStreamInfo(info);
     } catch (e) {
       stream?.getTracks().forEach((t) => t.stop());
       if ((e as Error).name !== 'NotAllowedError')
@@ -349,6 +458,7 @@ export function useVoice(onError: (text: string) => void) {
     deaf,
     visual,
     mode,
+    streamInfo,
     joining,
     join,
     leave,

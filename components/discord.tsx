@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { X } from 'lucide-react';
+import { Maximize2, Minimize2, X } from 'lucide-react';
 export function Avatar({
   user,
   size = 36,
@@ -94,6 +94,33 @@ export function Media({
     </>
   );
 }
+export function FullscreenButton() {
+  const ref = useRef<HTMLButtonElement>(null),
+    [fullscreen, setFullscreen] = useState(false);
+  useEffect(() => {
+    const update = () => {
+      const tile = ref.current?.closest('.voice-tile');
+      setFullscreen(!!tile && document.fullscreenElement === tile);
+    };
+    document.addEventListener('fullscreenchange', update);
+    return () => document.removeEventListener('fullscreenchange', update);
+  }, []);
+  return (
+    <button
+      ref={ref}
+      className="fullscreen-button"
+      title={fullscreen ? 'Sair da tela cheia' : 'Abrir em tela cheia'}
+      aria-label={fullscreen ? 'Sair da tela cheia' : 'Abrir em tela cheia'}
+      onClick={() => {
+        const tile = ref.current?.closest('.voice-tile') as HTMLElement | null;
+        if (document.fullscreenElement) void document.exitFullscreen();
+        else if (tile) void tile.requestFullscreen();
+      }}
+    >
+      {fullscreen ? <Minimize2 size={19} /> : <Maximize2 size={19} />}
+    </button>
+  );
+}
 export function Modal({
   children,
   onClose,
@@ -112,11 +139,7 @@ export function Modal({
     };
   }, []);
   return (
-    <dialog
-      ref={ref}
-      className="modal"
-      onCancel={onClose}
-    >
+    <dialog ref={ref} className="modal" onCancel={onClose}>
       <div className="modal-inner">
         <IconButton className="modal-close" label="Fechar" onClick={onClose}>
           <X />

@@ -3,7 +3,7 @@ Unicode true
 !include "LogicLib.nsh"
 !include "x64.nsh"
 Name "DisMulekadinhaCord"
-OutFile "out\DisMulekadinhaCord-Setup-1.0.0.exe"
+OutFile "out\DisMulekadinhaCord-Setup-1.1.0.exe"
 InstallDir "$LOCALAPPDATA\Programs\DisMulekadinhaCord"
 RequestExecutionLevel user
 SetCompressor /SOLID lzma
@@ -11,10 +11,10 @@ SetCompressorDictSize 16
 BrandingText "DisMulekadinhaCord"
 Icon "app.ico"
 UninstallIcon "app.ico"
-VIProductVersion "1.0.0.0"
+VIProductVersion "1.1.0.0"
 VIAddVersionKey "ProductName" "DisMulekadinhaCord"
 VIAddVersionKey "FileDescription" "Instalador do DisMulekadinhaCord"
-VIAddVersionKey "FileVersion" "1.0.0"
+VIAddVersionKey "FileVersion" "1.1.0"
 VIAddVersionKey "LegalCopyright" "DisMulekadinhaCord"
 !define MUI_ABORTWARNING
 !define MUI_WELCOMEPAGE_TITLE "Bem-vindo ao DisMulekadinhaCord"
@@ -51,7 +51,7 @@ Section "Aplicativo" SEC_APP
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\DisMulekadinhaCord" "UninstallString" '$\"$INSTDIR\Uninstall.exe$\"'
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\DisMulekadinhaCord" "InstallLocation" "$INSTDIR"
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\DisMulekadinhaCord" "DisplayIcon" "$INSTDIR\DisMulekadinhaCord.exe"
-  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\DisMulekadinhaCord" "DisplayVersion" "1.0.0"
+  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\DisMulekadinhaCord" "DisplayVersion" "1.1.0"
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\DisMulekadinhaCord" "Publisher" "DisMulekadinhaCord"
   WriteRegDWORD HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\DisMulekadinhaCord" "NoModify" 1
   WriteRegDWORD HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\DisMulekadinhaCord" "NoRepair" 1

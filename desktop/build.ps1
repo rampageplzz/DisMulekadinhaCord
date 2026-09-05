@@ -46,7 +46,7 @@ Copy-Item app.config build/DisMulekadinhaCord.exe.config
 if ($LASTEXITCODE -ne 0) {throw 'Desktop compilation failed'}
 & './vendor/nsis/nsis-3.12/makensis.exe' /V2 installer.nsi
 if ($LASTEXITCODE -ne 0) {throw 'Installer compilation failed'}
-$installer = Get-Item out/DisMulekadinhaCord-Setup-1.0.0.exe
+$installer = Get-Item out/DisMulekadinhaCord-Setup-1.1.0.exe
 $checksum = (Get-FileHash $installer.FullName -Algorithm SHA256).Hash.ToLower()
 [IO.File]::WriteAllText((Join-Path $PSScriptRoot 'out/SHA256SUMS.txt'),"$checksum  $($installer.Name)" + [Environment]::NewLine)
 Write-Output "Installer created: $($installer.FullName)"
