@@ -35,7 +35,7 @@ export const STREAM_QUALITY_OPTIONS: {
     width: 1920,
     height: 1080,
     frameRate: 60,
-    bitrate: 10_000_000,
+    bitrate: 6_000_000,
   },
   {
     value: '1440p60',
@@ -43,7 +43,7 @@ export const STREAM_QUALITY_OPTIONS: {
     width: 2560,
     height: 1440,
     frameRate: 60,
-    bitrate: 16_000_000,
+    bitrate: 10_000_000,
   },
 ];
 const tuneVideoSender = async (
@@ -58,6 +58,15 @@ const tuneVideoSender = async (
   parameters.encodings[0].maxFramerate = frameRate;
   parameters.encodings[0].scaleResolutionDownBy = 1;
   await sender.setParameters(parameters).catch(() => {});
+};
+const preferCompatibleVideoCodec = (transceiver: RTCRtpTransceiver) => {
+  const codecs = RTCRtpReceiver.getCapabilities('video')?.codecs;
+  if (!codecs?.some((codec) => codec.mimeType.toLowerCase() === 'video/vp8'))
+    return;
+  transceiver.setCodecPreferences([
+    ...codecs.filter((codec) => codec.mimeType.toLowerCase() === 'video/vp8'),
+    ...codecs.filter((codec) => codec.mimeType.toLowerCase() !== 'video/vp8'),
+  ]);
 };
 type Connection = {
   pc: RTCPeerConnection;
@@ -178,13 +187,19 @@ export function useVoice(onError: (text: string) => void) {
       const make = (p: VoicePeer) => {
         if (s.connections.has(p.id)) return s.connections.get(p.id)!;
         const pc = new RTCPeerConnection({ iceServers: s.ice }),
-          stream = new MediaStream();
-        const senders = [
-          pc.addTransceiver(s.mic.getAudioTracks()[0], {
+          stream = new MediaStream(),
+          microphone = pc.addTransceiver(s.mic.getAudioTracks()[0], {
             direction: 'sendrecv',
-          }).sender,
-          pc.addTransceiver('video', { direction: 'sendrecv' }).sender,
-          pc.addTransceiver('audio', { direction: 'sendrecv' }).sender,
+          }),
+          video = pc.addTransceiver('video', { direction: 'sendrecv' }),
+          screenAudio = pc.addTransceiver('audio', {
+            direction: 'sendrecv',
+          });
+        preferCompatibleVideoCodec(video);
+        const senders = [
+          microphone.sender,
+          video.sender,
+          screenAudio.sender,
         ];
         const c = {
           pc,
@@ -194,6 +209,7 @@ export function useVoice(onError: (text: string) => void) {
         };
         s.connections.set(p.id, c);
         if (s.visual) {
+          senders[1].setStreams(s.visual);
           void senders[1]
             .replaceTrack(s.visual.getVideoTracks()[0] || null)
             .then(() =>
@@ -440,6 +456,7 @@ export function useVoice(onError: (text: string) => void) {
       await Promise.all(
         [...s.connections].map(async ([target, c]) => {
           await c.senders[1].replaceTrack(videoTrack);
+          c.senders[1].setStreams(stream!);
           await tuneVideoSender(c.senders[1], s.videoBitrate, s.videoFrameRate);
           await c.senders[2].replaceTrack(stream!.getAudioTracks()[0] || null);
           await api('voice/signal', {
@@ -459,6 +476,45 @@ export function useVoice(onError: (text: string) => void) {
               },
             });
           }
+          window.setTimeout(async () => {
+            if (s.stopped || s.visual !== stream) return;
+            const stats = await c.senders[1].getStats().catch(() => null);
+            let framesEncoded = 0;
+            stats?.forEach((report) => {
+              if (
+                report.type === 'outbound-rtp' &&
+                !report.isRemote &&
+                (report.kind === 'video' || report.mediaType === 'video')
+              )
+                framesEncoded += Number(report.framesEncoded || 0);
+            });
+            if (framesEncoded > 0) return;
+            await c.senders[1].replaceTrack(null).catch(() => {});
+            await c.senders[1].replaceTrack(videoTrack).catch(() => {});
+            c.senders[1].setStreams(stream!);
+            await tuneVideoSender(
+              c.senders[1],
+              s.videoBitrate,
+              s.videoFrameRate,
+            );
+            await api('voice/signal', {
+              peer: s.id,
+              target,
+              payload: { video: true, refreshVideo: true, ...info },
+            }).catch(() => {});
+            if (s.id < target && c.pc.signalingState === 'stable') {
+              await c.pc.setLocalDescription(await c.pc.createOffer());
+              await api('voice/signal', {
+                peer: s.id,
+                target,
+                payload: {
+                  description: c.pc.localDescription,
+                  video: true,
+                  ...info,
+                },
+              }).catch(() => {});
+            }
+          }, 5000);
         }),
       );
       stream.getVideoTracks()[0].onended = () => {
