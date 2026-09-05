@@ -2,7 +2,7 @@
 
 Aplicativo independente inspirado na interface do Discord, com servidores, canais, mensagens, voz e compartilhamento de tela.
 
-**[Baixar para Windows](https://rampageplzz.github.io/DisMulekadinhaCord/)** · **[Abrir a aplicação](https://dismulekadinhacord.woodsy-spark-8791.chatgpt.site)**
+**[Baixar para Windows](https://rampageplzz.github.io/DisMulekadinhaCord/)** · **[Abrir a aplicação](https://dismulekadinhacord.rampageplz.chatgpt.site)**
 
 ## Aplicativo Windows
 

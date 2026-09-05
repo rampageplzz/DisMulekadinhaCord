@@ -15,7 +15,7 @@ using Microsoft.Web.WebView2.WinForms;
 [assembly: AssemblyFileVersion("1.0.0.0")]
 
 internal static class Program {
-    internal const string SiteUrl = "https://dismulekadinhacord.woodsy-spark-8791.chatgpt.site";
+    internal const string SiteUrl = "https://dismulekadinhacord.rampageplz.chatgpt.site";
     [STAThread]
     private static void Main(string[] args) {
         bool created;
