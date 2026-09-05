@@ -6,7 +6,7 @@ Aplicativo independente inspirado na interface do Discord, com servidores, canai
 
 ## Aplicativo Windows
 
-O instalador **DisMulekadinhaCord-Setup-1.0.0.exe** tem aproximadamente **1,85 MiB**. O cliente instalado ocupa cerca de **0,88 MiB**, excluindo o runtime WebView2 compartilhado, cache e perfil. Não há medição comparativa de RAM/CPU com o Discord.
+O instalador **DisMulekadinhaCord-Setup-1.1.0.exe** é leve e usa o WebView2 compartilhado do Windows. O cliente instalado ocupa cerca de **0,88 MiB**, excluindo o runtime WebView2 compartilhado, cache e perfil. Não há medição comparativa de RAM/CPU com o Discord.
 
 - Windows 10/11 atualizado, 64 bits, .NET Framework 4.8 e internet.
 - Cliente nativo em C# / Windows Forms com WebView2 Evergreen.
@@ -24,7 +24,8 @@ O instalador **DisMulekadinhaCord-Setup-1.0.0.exe** tem aproximadamente **1,85 M
 - Mensagens persistentes, busca, paginação, edição, exclusão, respostas, curtidas e fixação pelo dono.
 - Conversas privadas entre dois usuários.
 - Anexos de até 8 MB, acessíveis apenas por membros do canal.
-- Chamadas WebRTC de até 8 participantes, microfone, áudio, câmera e transmissão de tela.
+- Chamadas WebRTC de até 8 participantes, microfone, áudio, câmera e transmissão de tela em perfis 1080p/60 FPS e 1440p/60 FPS.
+- Botão de tela cheia em cada câmera ou transmissão, inclusive no cliente Windows.
 - Compartilhamento de áudio da tela quando o navegador e a fonte escolhida permitem.
 - Notificações do canal aberto, mediante permissão.
 
@@ -32,7 +33,7 @@ O instalador **DisMulekadinhaCord-Setup-1.0.0.exe** tem aproximadamente **1,85 M
 
 Não é uma reprodução de todas as funções do Discord. Não inclui Nitro, bots, integrações, chamadas em DMs, sistema de amizade/bloqueio, cargos avançados, recuperação de senha, moderação completa ou infraestrutura de mídia em escala.
 
-As mensagens usam polling de 2 segundos. Áudio/vídeo usam malha P2P com STUN; redes com NAT/firewall restritivos podem exigir TURN. Não há TURN pago ou SFU provisionado. Até 8 participantes é um limite de software, não uma garantia de qualidade em qualquer conexão.
+As mensagens usam polling de 2 segundos. Áudio/vídeo usam malha P2P com STUN; redes com NAT/firewall restritivos podem exigir TURN. Não há TURN pago ou SFU provisionado. Até 8 participantes é um limite de software, não uma garantia de qualidade em qualquer conexão. A resolução e os 60 FPS dependem da fonte escolhida, do navegador, do computador e da banda disponível entre cada par de participantes.
 
 O teste automatizado verifica sinalização entre participantes; áudio, captura da tela e qualidade de chamada **ainda precisam ser validados entre dois computadores reais**. A interface WebMCP é opcional e não foi validada em um contexto compatível.
 
