@@ -260,7 +260,9 @@ export function useVoice(onError: (text: string) => void) {
           );
           if (s.stopped) return;
           failures = 0;
-          const incoming: VoicePeer[] = result.peers;
+          const incoming: VoicePeer[] = [...result.peers].sort((a, b) =>
+            a.id.localeCompare(b.id),
+          );
           const valid = new Set(incoming.map((p) => p.id));
           s.connections.forEach((c, key) => {
             if (!valid.has(key)) {
