@@ -110,7 +110,9 @@ export default function Home() {
     [reactions, setReactions] = useState<Reaction[]>([]),
     [hasMore, setHasMore] = useState(false);
   const [modal, setModal] = useState(''),
-    [register, setRegister] = useState(false),
+    [authMode, setAuthMode] = useState<'nickname' | 'login' | 'register'>(
+      'nickname',
+    ),
     [busy, setBusy] = useState(false),
     [toast, setToast] = useState(''),
     [modalError, setModalError] = useState(''),
@@ -385,7 +387,12 @@ export default function Home() {
     );
     try {
       if (modal === 'auth') {
-        await api('auth', { ...b, action: register ? 'register' : 'login' });
+        if (authMode === 'nickname') await api('guest', { name: b.name });
+        else
+          await api('auth', {
+            ...b,
+            action: authMode === 'register' ? 'register' : 'login',
+          });
         await bootstrap();
         setModal(pendingInvite ? 'join' : '');
       } else if (modal === 'server') {
@@ -1578,67 +1585,99 @@ export default function Home() {
               <div className="modal-symbol">
                 <Gamepad2 size={34} />
               </div>
-              <h2>{register ? 'Crie sua conta' : 'Olha quem voltou!'}</h2>
+              <h2>
+                {authMode === 'nickname'
+                  ? 'Qual é o seu apelido?'
+                  : authMode === 'register'
+                    ? 'Crie sua conta'
+                    : 'Olha quem voltou!'}
+              </h2>
               <p>
-                {register
+                {authMode === 'nickname'
+                  ? 'Digite um nick e entre direto na resenha.'
+                  : authMode === 'register'
                   ? 'A mulekadinha está esperando por você.'
                   : 'Entre para continuar a resenha.'}
               </p>
               <form onSubmit={submitModal}>
-                {register && (
+                {(authMode === 'nickname' || authMode === 'register') && (
                   <label>
-                    COMO A GALERA TE CHAMA?
+                    SEU APELIDO
                     <input
                       name="name"
-                      placeholder="Seu nome"
+                      placeholder="Como a galera te chama?"
                       required
+                      minLength={2}
                       maxLength={40}
                       autoComplete="name"
                     />
                   </label>
                 )}
-                <label>
-                  NOME DE USUÁRIO
-                  <input
-                    name="username"
-                    placeholder="seu_usuario"
-                    required
-                    minLength={3}
-                    maxLength={24}
-                    pattern="[a-zA-Z0-9_.]+"
-                    autoComplete="username"
-                  />
-                </label>
-                <label>
-                  SENHA
-                  <input
-                    type="password"
-                    name="password"
-                    placeholder="Pelo menos 8 caracteres"
-                    required
-                    minLength={8}
-                    maxLength={128}
-                    autoComplete={
-                      register ? 'new-password' : 'current-password'
-                    }
-                  />
-                </label>
+                {authMode !== 'nickname' && (
+                  <>
+                    <label>
+                      NOME DE USUÁRIO
+                      <input
+                        name="username"
+                        placeholder="seu_usuario"
+                        required
+                        minLength={3}
+                        maxLength={24}
+                        pattern="[a-zA-Z0-9_.]+"
+                        autoComplete="username"
+                      />
+                    </label>
+                    <label>
+                      SENHA
+                      <input
+                        type="password"
+                        name="password"
+                        placeholder="Pelo menos 8 caracteres"
+                        required
+                        minLength={8}
+                        maxLength={128}
+                        autoComplete={
+                          authMode === 'register'
+                            ? 'new-password'
+                            : 'current-password'
+                        }
+                      />
+                    </label>
+                  </>
+                )}
                 <FormError error={modalError} />
                 <button className="primary full" disabled={busy}>
-                  {busy ? 'Aguarde…' : register ? 'Criar conta' : 'Entrar'}
+                  {busy
+                    ? 'Aguarde…'
+                    : authMode === 'nickname'
+                      ? 'Entrar na Mulekadinha'
+                      : authMode === 'register'
+                        ? 'Criar conta'
+                        : 'Entrar'}
                 </button>
               </form>
               <button
                 className="text-link"
                 onClick={() => {
-                  setRegister(!register);
+                  setAuthMode(authMode === 'login' ? 'nickname' : 'login');
                   setModalError('');
                 }}
               >
-                {register
-                  ? 'Já tenho uma conta'
-                  : 'Ainda não tem conta? Cadastre-se'}
+                {authMode === 'login'
+                  ? 'Entrar apenas com apelido'
+                  : 'Já tenho uma conta antiga'}
               </button>
+              {authMode === 'login' && (
+                <button
+                  className="text-link"
+                  onClick={() => {
+                    setAuthMode('register');
+                    setModalError('');
+                  }}
+                >
+                  Criar uma conta com senha
+                </button>
+              )}
               <small className="auth-note">
                 DisMulekadinhaCord é um projeto independente.
               </small>

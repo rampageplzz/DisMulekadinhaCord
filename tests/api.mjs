@@ -37,6 +37,7 @@ const a = client(),
   b = client(),
   outsider = client(),
   guest = client(),
+  nicknameGuest = client(),
   tag = randomUUID().slice(0, 8),
   password = randomUUID();
 const usernameA = 'test_a_' + tag,
@@ -59,6 +60,10 @@ await outsider('auth', {
   username: 'test_c_' + tag,
   password,
 });
+const quickEntry = await nicknameGuest('guest', { name: 'Jarbas Teste' });
+assert.equal(quickEntry.user.name, 'Jarbas Teste');
+assert.match(quickEntry.user.username, /^jarbas_teste_[a-f0-9]{8}$/);
+assert.equal((await nicknameGuest('bootstrap')).user.id, quickEntry.user.id);
 assert.equal((await a('bootstrap')).user.id, alice.user.id);
 const server = await a('servers', { name: 'Servidor teste ' + tag });
 const mine = (await a('bootstrap')).servers.find((s) => s.id === server.id);

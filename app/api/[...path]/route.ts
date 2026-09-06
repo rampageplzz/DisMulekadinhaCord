@@ -178,6 +178,64 @@ async function handle(req: Request) {
       fail(400, 'Dados inválidos.');
     }
   };
+  if (path === 'guest' && method === 'POST') {
+    const b = await body(),
+      name = str(b.name, 40, 2);
+    await rate(
+      'guest:' + (await hash(req.headers.get('cf-connecting-ip') || 'local')),
+      20,
+      600,
+    );
+    await seed();
+    const uid = id(),
+      slug =
+        name
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '_')
+          .replace(/^_+|_+$/g, '')
+          .slice(0, 14) || 'visitante',
+      username = `${slug}_${uid.replaceAll('-', '').slice(0, 8)}`,
+      salt = id(),
+      color = ['#5865f2', '#438879', '#a85888', '#bd7848', '#8261b9'][
+        Math.floor(Math.random() * 5)
+      ];
+    await db.batch([
+      db
+        .prepare(
+          'INSERT INTO users (id,username,name,password,salt,color,seen) VALUES (?,?,?,?,?,?,?)',
+        )
+        .bind(
+          uid,
+          username,
+          name,
+          await password(id() + id(), salt),
+          salt,
+          color,
+          now(),
+        ),
+      db
+        .prepare("INSERT INTO members (server_id,user_id) VALUES ('home',?)")
+        .bind(uid),
+    ]);
+    const token = id() + id();
+    await db
+      .prepare('INSERT INTO sessions (id,user_id,expires) VALUES (?,?,?)')
+      .bind(await hash(token), uid, now() + 30 * 86400000)
+      .run();
+    return json(
+      { user: { id: uid, username, name, color, seen: now() } },
+      200,
+      {
+        'Set-Cookie':
+          'dm_session=' +
+          token +
+          '; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000' +
+          (url.protocol === 'https:' ? '; Secure' : ''),
+      },
+    );
+  }
   if (path === 'auth' && method === 'POST') {
     const b = await body();
     const username = str(b.username, 24, 3).toLowerCase();

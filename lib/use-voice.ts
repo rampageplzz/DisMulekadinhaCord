@@ -224,7 +224,13 @@ export function useVoice(onError: (text: string) => void) {
             );
         };
         pc.ontrack = (e) => {
-          stream.addTrack(e.track);
+          if (e.track.kind === 'video')
+            stream
+              .getVideoTracks()
+              .filter((track) => track.id !== e.track.id)
+              .forEach((track) => stream.removeTrack(track));
+          if (!stream.getTracks().some((track) => track.id === e.track.id))
+            stream.addTrack(e.track);
           setPeers((old) =>
             old.map((x) => (x.id === p.id ? { ...x, stream } : x)),
           );
@@ -301,6 +307,27 @@ export function useVoice(onError: (text: string) => void) {
                     : x,
                 ),
               );
+            if (payload.video) {
+              window.setTimeout(() => {
+                const hasLiveVideo = c.stream
+                  .getVideoTracks()
+                  .some((track) => track.readyState === 'live');
+                if (!s.stopped && !hasLiveVideo)
+                  void signal(p.id, { requestVideo: true }).catch(() => {});
+              }, 2500);
+            }
+            if (
+              payload.requestVideo &&
+              s.visual &&
+              c.pc.signalingState === 'stable'
+            ) {
+              await c.pc.setLocalDescription(await c.pc.createOffer());
+              await signal(p.id, {
+                description: c.pc.localDescription,
+                video: true,
+                ...s.streamInfo,
+              });
+            }
             if (
               payload.refreshVideo &&
               s.id < p.id &&

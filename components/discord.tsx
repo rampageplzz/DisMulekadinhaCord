@@ -64,17 +64,20 @@ export function Media({
       audioElement = audioRef.current;
     setBlocked(false);
     setWaiting(video && !!stream);
-    if (stream) {
+    const bind = () => {
+      if (!stream) return;
       if (videoElement) {
-        videoElement.srcObject = stream;
+        videoElement.srcObject = new MediaStream(stream.getVideoTracks());
         videoElement.play().catch(() => {});
       }
       if (audioElement) {
-        audioElement.srcObject = stream;
+        audioElement.srcObject = new MediaStream(stream.getAudioTracks());
         audioElement.play().catch(() => setBlocked(true));
       }
-    }
+    };
+    bind();
     const retry = () => {
+      bind();
       videoElement?.play().catch(() => {});
       audioElement?.play().catch(() => setBlocked(true));
     };
